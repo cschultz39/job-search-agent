@@ -2,7 +2,7 @@ name: Daily Job Search
 
 on:
   schedule:
-    - cron: "0 13 * * *"   # runs daily at 1:00 PM UTC (adjust for your timezone)
+    - cron: "0 17 * * *"   # 12:00 PM CDT (UTC-5) / 11:00 AM CST in winter
   workflow_dispatch: {}     # lets you also trigger it manually from GitHub's UI
 
 jobs:
