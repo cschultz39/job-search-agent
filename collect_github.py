@@ -15,7 +15,6 @@ from sources import speedyapply
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 # --------------- relevance score via claude ----------------
-
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 CLASSIFICATION_PROMPT = """You are helping a computer science student graduating May 2027 evaluate new-grad job postings for Forward Deployed Engineer (FDE) or Software Engineer (SWE) roles.
@@ -39,6 +38,28 @@ Scoring guidance:
 - A strong SWE/FDE role in a lower-priority location should still score reasonably (5-7), not be penalized as heavily as an actual dealbreaker
 - Score lower (5-7) but still relevant: true for adjacent roles or acceptable-but-not-ideal locations
 - Only use relevant: false for dealbreaker matches or roles that clearly aren't software engineering work despite matching our keyword filter"""
+
+BLOCKED_COMPANIES = {
+    "palantir",
+    "flock safety",
+    "at&t",
+    "deloitte",
+    "motorola solutions",
+    "l3 harris",
+    "fedex",
+    "comcast",
+    "charter communications",
+    "clearview ai",
+    "axon",
+    "geolitica",
+    "lexisnexis",
+    "dji",
+    "digital receiver technology",
+    "fog data science",
+}
+
+def is_blocked_company(company_name):
+    return company_name.strip().lower() in BLOCKED_COMPANIES
 
 def classify_job(job):
     prompt = CLASSIFICATION_PROMPT.format(
@@ -69,7 +90,6 @@ def classify_job(job):
         return fallback
 
 # ----------------- add to tracker -------------------------
-
 def get_sheet():
     creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
     client = gspread.authorize(creds)
@@ -86,8 +106,12 @@ def add_new_jobs(sheet, jobs, existing_ids):
         if job["id"] in existing_ids:
             continue
 
-        print(f"  Classifying: {job['company']} — {job['title']}")
-        classification = classify_job(job)
+        if is_blocked_company(job["company"]):
+            print(f"  Blocked company, skipping classification: {job['company']}")
+            classification = {"relevant": False, "score": 1, "reason": "blocked company (ICE/surveillance)"}
+        else:
+            print(f"  Classifying: {job['company']} — {job['title']}")
+            classification = classify_job(job)
 
         sheet.append_row([
             job["id"],
