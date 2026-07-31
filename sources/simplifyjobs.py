@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timezone
 import requests
 
-GITHUB_HEADERS = {"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"}
+GITHUB_HEADERS = {"Authorization": f"token {os.getenv('GH_TOKEN_PAT')}"}
 RAW_URL = "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/listings.json"
 RELEVANT_CATEGORIES = {"Software Engineering"}
 TITLE_KEYWORDS = [

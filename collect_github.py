@@ -91,6 +91,10 @@ def classify_job(job):
 
 # ----------------- add to tracker -------------------------
 def get_sheet():
+    if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
+        with open("service_account.json", "w") as f:
+            f.write(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
+    
     creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
     client = gspread.authorize(creds)
     sheet_id = os.getenv("GOOGLE_SHEET_ID")
