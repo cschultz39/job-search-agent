@@ -7,10 +7,10 @@ from google.oauth2.service_account import Credentials
 import json
 from anthropic import Anthropic
 
-from sources import simplifyjobs
-
 # ------------ setup ------------------------
 load_dotenv()
+
+from sources import simplifyjobs
 
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
