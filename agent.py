@@ -80,12 +80,3 @@ def ask_agent(user_message):
 
     final_text = "".join(block.text for block in response.content if block.type == "text")
     return final_text
-
-if __name__ == "__main__":
-    print("Job Search Agent (test mode) — type a request, or 'quit' to exit\n")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() in ("quit", "exit"):
-            break
-        answer = ask_agent(user_input)
-        print(f"\nAgent: {answer}\n")
