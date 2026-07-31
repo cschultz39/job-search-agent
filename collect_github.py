@@ -1,68 +1,53 @@
 # ------------ imports --------------------
 import os
-import json
-import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-import requests
 import gspread
 from google.oauth2.service_account import Credentials
+import json
+from anthropic import Anthropic
+
+from sources import simplifyjobs
 
 # ------------ setup ------------------------
 load_dotenv()
 
-HEADERS = {"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"}
-RAW_URL = "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/listings.json"
-RELEVANT_CATEGORIES = {"Software Engineering"}
-TITLE_KEYWORDS = [
-    "software engineer", "swe", "software developer",
-    "forward deployed", "solutions engineer", "backend", "frontend",
-    "full stack", "full-stack", "machine learning engineer", "ml engineer",
-]
-
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# ------------------ fetch from github ---------------------
+# --------------- relevance score via claude ----------------
 
-def fetch_listings(max_retries=3):
-    for attempt in range(1, max_retries + 1):
-        try:
-            r = requests.get(RAW_URL, headers=HEADERS, timeout=30)
-            r.raise_for_status()
-            return r.json()
-        except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError) as e:
-            print(f"Attempt {attempt} failed ({e.__class__.__name__}), retrying...")
-            time.sleep(2)
-    raise RuntimeError("Failed to fetch listings.json after multiple retries")
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-def title_matches(title):
-    t = title.lower()
-    return any(kw in t for kw in TITLE_KEYWORDS)
+CLASSIFICATION_PROMPT = """You are helping a computer science student graduating May 2027 evaluate new-grad job postings for Forward Deployed Engineer (FDE) or Software Engineer (SWE) roles.
 
-def filter_and_clean(raw_listings):
-    jobs = []
-    for entry in raw_listings:
-        if not entry.get("active") or not entry.get("is_visible"):
-            continue
-        if entry.get("category") not in RELEVANT_CATEGORIES:
-            continue
-        if not title_matches(entry.get("title", "")):
-            continue
+Given this posting:
+Company: {company}
+Title: {title}
+Location: {location}
 
-        jobs.append({
-            "id": entry["id"],
-            "company": entry["company_name"],
-            "title": entry["title"],
-            "location": ", ".join(entry.get("locations", [])),
-            "link": entry["url"],
-            "category": entry["category"],
-            "sponsorship": entry.get("sponsorship"),
-            "date_posted": datetime.fromtimestamp(entry["date_posted"], tz=timezone.utc).strftime("%Y-%m-%d"),
-        })
+Respond with ONLY a JSON object, no other text, in this exact format:
+{{"relevant": true or false, "score": 1-10, "reason": "one short sentence"}}
 
-    jobs.sort(key=lambda j: j["date_posted"], reverse=True)
-    return jobs
+A posting is relevant if it's a genuine new-grad/entry-level SWE, backend, frontend, full-stack, ML engineer, or forward-deployed/solutions engineer role. Score higher for roles that closely match FDE or general SWE work. Score lower (but still relevant: true) for adjacent roles. Set relevant: false only if it's clearly not a software engineering role despite matching our keyword filter."""
 
+def classify_job(job):
+    prompt = CLASSIFICATION_PROMPT.format(
+        company=job["company"], title=job["title"], location=job["location"]
+    )
+    response = anthropic_client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=150,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw_text = response.content[0].text.strip()
+    raw_text = raw_text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+    try:
+        result = json.loads(raw_text)
+    except json.JSONDecodeError:
+        print(f"  Could not parse classification for {job['company']}: {raw_text}")
+        result = {"relevant": True, "score": 5, "reason": "classification failed, defaulted"}
 
 # ----------------- add to tracker -------------------------
 
@@ -81,6 +66,10 @@ def add_new_jobs(sheet, jobs, existing_ids):
     for job in jobs:
         if job["id"] in existing_ids:
             continue
+
+        print(f"  Classifying: {job['company']} — {job['title']}")
+        classification = classify_job(job)
+
         sheet.append_row([
             job["id"],
             job["company"],
@@ -89,18 +78,17 @@ def add_new_jobs(sheet, jobs, existing_ids):
             job["link"],
             job["date_posted"],
             datetime.now(timezone.utc).strftime("%Y-%m-%d"),  # date_scraped
-            "not applied",  # status — you'll update this manually as you go
-            "",  # notes
+            "not applied",  # status TBD
+            classification.get("score", ""),
+            classification.get("reason", ""),
         ])
         new_count += 1
     return new_count
 
 if __name__ == "__main__":
-    print("Fetching listings.json...")
-    raw = fetch_listings()
-
-    print("Filtering to active, relevant postings...")
-    jobs = filter_and_clean(raw)
+    print("Fetching from sources...")
+    jobs = simplifyjobs.get_jobs()
+    print(f"{len(jobs)} postings match filters (simplifyjobs)")
 
     print("Connecting to Google Sheet...")
     sheet = get_sheet()
