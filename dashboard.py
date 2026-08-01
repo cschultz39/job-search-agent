@@ -6,7 +6,7 @@ from sheet_tools import mark_status, search_jobs, get_status_counts, get_status_
 
 st.set_page_config(page_title="Job Search Agent", layout="wide")
 
-# custom CSS so page has no scrollbar
+# custom CSS so page has no scrollbar, floating chat widget
 st.markdown(
     """
     <style>
@@ -14,8 +14,28 @@ st.markdown(
             padding-top: 1.5rem;
             padding-bottom: 0rem;
         }
-        html, body, [data-testid="stAppViewContainer"] {
-            overflow: hidden;
+
+        /* floating chat widget */
+        .st-key-chat_widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 360px;
+            z-index: 999;
+        }
+        .st-key-chat_toggle button {
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 1.3rem;
+        }
+        .st-key-chat_panel {
+            background-color: var(--secondary-background-color, #262730) !important;  
+            border: 1px solid rgba(128,128,128,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
     </style>
     """,
@@ -25,13 +45,15 @@ st.markdown(
 st.title("Job Search Agent")
 
 # page layout
-left_col, right_col = st.columns([1, 2])
+left_col, right_col = st.columns([1, 1])
 
 # information to cache in session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "top_unapplied" not in st.session_state:
     st.session_state.top_unapplied = search_jobs(status="not applied", limit=10)
+if "chat_open" not in st.session_state:
+    st.session_state.chat_open = False
 
 # renders a marked applied button under each unapplied job
 def render_job_buttons(jobs, msg_index):
@@ -48,7 +70,7 @@ def render_job_buttons(jobs, msg_index):
                 st.error(f"Couldn't update status: {result.get('error')}")
 
 # metrics display
-with right_col:
+with left_col:
     st.subheader("Metrics")
 
     # status counts
@@ -77,8 +99,9 @@ with right_col:
     else:
         st.caption("No status changes logged yet — the chart fills in as you mark jobs applied/interviewing/etc.")
 
-    # top 10 unapplied jobs
-    st.markdown("**Top 10 unapplied jobs**")
+# top 10 unapplied jobs
+with right_col:
+    st.subheader("Top 10 unapplied jobs")
 
     if not st.session_state.top_unapplied:
         st.caption("No unapplied jobs — nice, you're caught up!")
@@ -101,31 +124,37 @@ with right_col:
                         st.error(result.get("error", "Failed to update status"))
             st.divider()
 
-# chat display
-with left_col:
-    st.subheader("Chat")
-    
-    chat_container = st.container(height=380, border=False)
-    with chat_container:
-        for i, message in enumerate(st.session_state.messages):
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-                if message["role"] == "assistant" and message.get("jobs"):
-                    render_job_buttons(message["jobs"], i)
+# floating chat widget
+with st.container(key="chat_widget"):
+    if st.session_state.chat_open:
+        with st.container(key="chat_panel"):
+            st.subheader("Chat")
+            chat_container = st.container(height=380, border=False)
+            with chat_container:
+                for i, message in enumerate(st.session_state.messages):
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+                        if message["role"] == "assistant" and message.get("jobs"):
+                            render_job_buttons(message["jobs"], i)
 
-    if user_input := st.chat_input("Ask about your saved jobs..."):
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
+            if user_input := st.chat_input("Ask about your saved jobs..."):
+                st.session_state.messages.append({"role": "user", "content": user_input})
+                with st.chat_message("user"):
+                    st.markdown(user_input)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = ask_agent(user_input)
-            st.markdown(response["text"])
-            render_job_buttons(response["jobs"], len(st.session_state.messages))
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        response = ask_agent(user_input)
+                    st.markdown(response["text"])
+                    render_job_buttons(response["jobs"], len(st.session_state.messages))
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response["text"],
-            "jobs": response["jobs"],
-        })
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response["text"],
+                    "jobs": response["jobs"],
+                })
+    with st.container(key="chat_toggle"):
+        icon = "✕" if st.session_state.chat_open else "💬"
+        if st.button(icon, key="chat_toggle_btn"):
+            st.session_state.chat_open = not st.session_state.chat_open
+            st.rerun()
