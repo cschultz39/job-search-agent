@@ -47,17 +47,39 @@ STATUS_OPTIONS = [
     "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
 ]
 
+# in-memory cache of id -> row number
+_id_to_row = {}
+
+def _refresh_id_cache(sheet, id_col):
+    global _id_to_row
+    values = sheet.col_values(id_col)  # index 0 is the header row
+    _id_to_row = {
+        job_id: row_num
+        for row_num, job_id in enumerate(values, start=1)
+        if row_num > 1 and job_id
+    }
+
 def mark_status(job_id, new_status):
     if new_status not in STATUS_OPTIONS:
         return {"success": False, "error": f"'{new_status}' is not a valid status. Must be one of: {', '.join(STATUS_OPTIONS)}"}
-    
+
     sheet = get_sheet()
-    records = sheet.get_all_records()
     header = sheet.row_values(1)
+    id_col = header.index("id") + 1
     status_col = header.index("status") + 1
 
-    for i, row in enumerate(records, start=2):  # row 1 is the header
-        if row.get("id") == job_id:
-            sheet.update_cell(i, status_col, new_status)
-            return {"success": True}
-    return {"success": False, "error": "job_id not found"}
+    if not _id_to_row:
+        _refresh_id_cache(sheet, id_col)
+
+    row = _id_to_row.get(job_id)
+
+    # cache miss = rebuild once before concluding it doesn't exist
+    if row is None:
+        _refresh_id_cache(sheet, id_col)
+        row = _id_to_row.get(job_id)
+
+    if row is None:
+        return {"success": False, "error": "job_id not found"}
+
+    sheet.update_cell(row, status_col, new_status)
+    return {"success": True}
