@@ -6,6 +6,8 @@ load_dotenv()
 import gspread
 from google.oauth2.service_account import Credentials
 
+SERVICE_ACCOUNT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "service_account.json")
+
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 STATUS_HISTORY_HEADER = ["job_id", "old_status", "new_status", "timestamp"]
@@ -18,9 +20,9 @@ _id_to_row = {}
 
 def get_spreadsheet():
     if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
-        with open("service_account.json", "w") as f:
+        with open(SERVICE_ACCOUNT_PATH, "w") as f:
             f.write(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
-    creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH, scopes=SHEETS_SCOPES)
     client = gspread.authorize(creds)
     sheet_id = os.getenv("GOOGLE_SHEET_ID")
     return client.open_by_key(sheet_id)
