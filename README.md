@@ -1,8 +1,8 @@
 # Job Search Agent
 
-An automated pipeline that collects new-grad Software Engineering / Forward Deployed Engineer job postings, filters and scores them against personal preferences using Claude, tracks them in Google Sheets, and provides a conversational agent (via Streamlit) to search and manage application status — with a daily Slack digest of new postings.
+An automated pipeline that collects new-grad Software Engineering / Forward Deployed Engineer job postings, filters and scores them against personal preferences using Claude, tracks them in Google Sheets, and provides a conversational agent to search and manage application status — with a daily Slack digest of new postings.
 
-Built as a personal tool to reduce the manual overhead of a new-grad job search (target: Summer/Fall 2027 start), and as a hands-on project in building agentic tools with the Claude API.
+Built as a personal tool to reduce the manual overhead of a new-grad job search (target: Summer/Fall 2027 start), and as a hands-on project in building agentic tools with the Claude API, and full-stack web development.
 
 ## Architecture overview
 
@@ -21,14 +21,23 @@ Built as a personal tool to reduce the manual overhead of a new-grad job search 
                          └──────────────────┘     └─────────────────┘
 
                          ┌──────────────────────────────────────────┐
-                         │  Streamlit dashboard (dashboard.py)        │
-                         │  Chat-based agent (agent.py) using         │
-                         │  Claude tool-use to search/filter jobs      │
-                         │  and update application status              │
+                         │  FastAPI backend (api/)                    │
+                         │  Wraps agent.py + sheet_tools.py as         │
+                         │  REST endpoints: /jobs, /jobs/{id}/status,  │
+                         │  /chat, /metrics, /history                  │
+                         └──────────────────────────────────────────┘
+                                            │
+                                            v
+                         ┌──────────────────────────────────────────┐
+                         │  Next.js + Tailwind frontend (frontend/)   │
+                         │  Metrics tiles, weekly status history      │
+                         │  chart, chat interface, top 10 unapplied    │
+                         │  jobs — calls the FastAPI backend            │
                          └──────────────────────────────────────────┘
 
-         Everything above is run daily, automatically, via
-                    GitHub Actions (.github/workflows/daily.yml)
+         Collection/classification/Slack digest are run daily,
+         automatically, via GitHub Actions (.github/workflows/daily.yml).
+         The frontend and backend are deployed separately (see below).
 ```
 
 ## What it does
@@ -37,25 +46,31 @@ Built as a personal tool to reduce the manual overhead of a new-grad job search 
 2. **Filters** by title keywords (software engineer, backend, frontend, forward deployed, etc.) and active/visible status
 3. **Deduplicates** against what's already been collected, so re-running never creates duplicate rows
 4. **Classifies** each new posting with the Claude API against personal preferences — location tiers, and hard-excludes for defense/government contractors and companies associated with ICE/surveillance work (both via an explicit blocklist for known companies and a prompt-based fallback for others)
-5. **Stores** everything in a Google Sheet — id, company, title, location, link, source, date posted, date scraped, status, relevance score, relevance reason
+5. **Stores** everything in a Google Sheet — id, company, title, location, link, source, date posted, date scraped, status, relevance score, relevance reason — plus a `status_history` tab logging every status transition as an event
 6. **Reports** newly found postings to Slack once a day, sorted by relevance score
-7. **Runs automatically** every day via a GitHub Actions scheduled workflow — no manual steps required
-8. **Provides a conversational agent** (Streamlit + Claude tool-use) to ask things like *"top 10 unapplied jobs by relevance score"* and to mark postings as applied/interviewing/etc. directly through chat
+7. **Runs automatically** every day via a GitHub Actions scheduled workflow — no manual steps required for collection
+8. **Serves a web dashboard** (Next.js + Tailwind frontend, FastAPI backend) showing status metrics, a weekly status history chart, the top 10 unapplied jobs, and a conversational agent (Claude tool-use) to search postings and update application status directly through chat
 
 ## File structure
 
 ```
 job-search-agent/
 ├── collect_github.py          # Main collector: fetch, filter, dedup, classify, write to sheet
-├── sheet_tools.py              # Shared Google Sheets read/write logic (used by agent + collector)
+├── sheet_tools.py              # Shared Google Sheets read/write logic (used by agent + collector + API)
 ├── slack_report.py             # Formats and sends today's new postings to Slack
 ├── reclassify.py               # One-off batch re-classification of existing rows
 ├── agent.py                    # Claude tool-use agent: search_jobs / mark_status tools
-├── dashboard.py                # Streamlit chat UI wrapping agent.py
 ├── sources/
 │   ├── __init__.py
 │   ├── simplifyjobs.py         # SimplifyJobs source (currently disabled — 2026 postings only)
 │   └── speedyapply.py          # speedyapply 2027-SWE-College-Jobs source
+├── api/                          # FastAPI backend (new) — wraps agent.py/sheet_tools.py as REST endpoints
+│   ├── main.py                    # App entrypoint, route registration
+│   └── routes/                    # /jobs, /jobs/{id}/status, /chat, /metrics, /history
+├── frontend/                     # Next.js + Tailwind frontend (new)
+│   ├── app/                       # Pages: dashboard, chat
+│   └── components/                # Metrics tiles, status history chart, job list, chat panel
+├── dashboard.py                # [legacy] Streamlit dashboard — being replaced by frontend/ + api/
 ├── .github/workflows/
 │   └── daily.yml                # Scheduled automation (runs collector + Slack report daily)
 ├── requirements.txt
@@ -90,11 +105,13 @@ Dealbreaker postings are currently still written to the sheet (visible, scored l
 | `GH_TOKEN_PAT` | GitHub API token (higher rate limits; named to avoid GitHub Actions' reserved `GITHUB_*` prefix) |
 | `SLACK_WEBHOOK_URL` | Incoming webhook for the daily Slack digest |
 | `GOOGLE_SHEET_ID` | Target Google Sheet ID |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Full service account JSON (used as a GitHub Actions secret; written to a local file at runtime in CI) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Full service account JSON (used as a GitHub Actions secret; written to a local file at runtime in CI, and used by the FastAPI backend locally/in deployment) |
 
-Locally, these live in `.env`. In GitHub Actions, they're stored as repository secrets and injected as environment variables in the workflow.
+Locally, these live in `.env`. In GitHub Actions, they're stored as repository secrets and injected as environment variables in the workflow. The FastAPI backend will need the same variables set in its deployment environment (see below).
 
 ## Running locally
+
+**Collector, classifier, Slack digest (unchanged):**
 
 ```powershell
 python -m venv venv
@@ -103,33 +120,65 @@ pip install -r requirements.txt
 
 python collect_github.py      # fetch, filter, classify, save new postings
 python slack_report.py        # send today's new postings to Slack
-streamlit run dashboard.py    # launch the chat-based agent dashboard
+```
+
+**Web dashboard (new direction — in progress):**
+
+```powershell
+# backend
+cd api
+pip install -r requirements.txt
+uvicorn main:app --reload      # serves REST API for the frontend
+
+# frontend (separate terminal)
+cd frontend
+npm install
+npm run dev                    # Next.js dev server, calls the FastAPI backend
+```
+
+**Legacy Streamlit dashboard (being phased out):**
+
+```powershell
+streamlit run dashboard.py
 ```
 
 ## Automation
 
-`.github/workflows/daily.yml` runs `collect_github.py` then `slack_report.py` automatically once a day (currently scheduled ~12pm Central, adjusted for UTC in the cron expression). Can also be triggered manually from the Actions tab in GitHub.
+`.github/workflows/daily.yml` runs `collect_github.py` then `slack_report.py` automatically once a day (currently scheduled ~12pm Central, adjusted for UTC in the cron expression). Can also be triggered manually from the Actions tab in GitHub. This part of the pipeline is unaffected by the dashboard migration.
 
-## The agent (dashboard.py + agent.py)
+## The web app (new direction)
 
-Built using Claude's tool-use (function calling) API. Two tools are exposed to Claude:
-- `search_jobs(status, min_score, company, limit)` — reads and filters the sheet
-- `mark_status(job_id, new_status)` — updates a posting's status, constrained to a fixed set of valid values (`not applied`, `applied`, `interviewing`, `offer`, `rejected`, `withdrawn`) via both the tool schema's `enum` and backend validation
+The dashboard is being rebuilt as a proper full-stack app instead of a single-script Streamlit app, for two reasons: Streamlit's full-script rerun model was causing slow (10-15s) reloads on every button click, and its CSS/layout customization was difficult to get right; and a Next.js + FastAPI stack is a stronger demonstration of full-stack skills for job applications.
 
-The Streamlit UI wraps this in a chat interface using `st.session_state` to persist conversation history across Streamlit's re-run-on-every-interaction model.
+**Backend (`api/`, FastAPI):** thin REST layer over the existing `agent.py` and `sheet_tools.py` logic — no business logic is being rewritten, just exposed over HTTP.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /jobs` | List/filter saved postings (wraps `search_jobs`) |
+| `PATCH /jobs/{id}/status` | Update a posting's status (wraps `mark_status`) |
+| `POST /chat` | Send a message to the Claude tool-use agent (wraps `ask_agent`) |
+| `GET /metrics` | Status counts for the metric tiles (wraps `get_status_counts`) |
+| `GET /history` | Weekly status history for the chart (wraps `get_status_history_weekly`) |
+
+**Frontend (`frontend/`, Next.js + Tailwind):** reimplements the same elements as the Streamlit dashboard — status count tiles, a weekly status history chart, a top-10-unapplied-jobs list with "Mark Applied" actions, and a chat interface for the agent — with real component-level updates instead of full-page reruns, and full CSS control via Tailwind.
+
+**Planned deployment:** Next.js frontend on Vercel; FastAPI backend on Render, Railway, or Fly.io.
 
 ## Status / next steps
 
 - [x] Multi-source collection with dedup
 - [x] Personalized Claude classification
-- [x] Google Sheets storage
+- [x] Google Sheets storage (including `status_history` event log)
 - [x] Slack daily digest
 - [x] Full automation via GitHub Actions
 - [x] Conversational agent for search + status updates
-- [ ] "Mark applied" button in the dashboard (in progress)
-- [ ] Dashboard metrics (total saved / applied / interviewing counts)
+- [x] "Mark applied" button in the dashboard
+- [x] Dashboard metrics (status counts, weekly status history chart)
+- [x] Streamlit dashboard as first working version
+- [ ] **FastAPI backend wrapping agent.py/sheet_tools.py (in progress)**
+- [ ] **Next.js + Tailwind frontend replacing the Streamlit dashboard (in progress)**
+- [ ] Deploy backend (Render/Railway/Fly.io) and frontend (Vercel)
+- [ ] Retire `dashboard.py` once the new frontend reaches feature parity
 - [ ] Dealbreaker filtering in default dashboard view
-- [ ] Visual polish pass on the dashboard
 - [ ] Additional sources (Greenhouse/Lever/Ashby direct pulls, Gmail parsing for LinkedIn/Handshake alerts)
 - [ ] Re-enable SimplifyJobs once it adds 2027 postings
-- [ ] Deployment (Streamlit Community Cloud) for a shareable link
