@@ -45,12 +45,24 @@ def run_tool(name, tool_input):
         return {"success": success}
     return {"error": f"unknown tool: {name}"}
 
+SYSTEM_PROMPT = """You are a job search assistant helping the user browse and manage saved job postings.
+
+When listing job postings in your response, ALWAYS include for each one:
+- Company and title
+- Relevance score
+- The direct application link (never omit this — it's the most actionable part of your response)
+- Current status
+
+Format each job as a clear, scannable item, not a dense paragraph."""
+
+
 def ask_agent(user_message):
     messages = [{"role": "user", "content": user_message}]
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
+        system=SYSTEM_PROMPT,
         tools=TOOLS,
         messages=messages,
     )
@@ -74,6 +86,7 @@ def ask_agent(user_message):
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=1024,
+            system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=messages,
         )
