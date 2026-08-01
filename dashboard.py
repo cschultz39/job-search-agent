@@ -27,9 +27,11 @@ st.title("Job Search Agent")
 # page layout
 left_col, right_col = st.columns([1, 2])
 
-# messages persist when script reruns
+# information to cache in session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "top_unapplied" not in st.session_state:
+    st.session_state.top_unapplied = search_jobs(status="not applied", limit=10)
 
 # renders a marked applied button under each unapplied job
 def render_job_buttons(jobs, msg_index):
@@ -74,6 +76,30 @@ with right_col:
         st.altair_chart(chart, use_container_width=True)
     else:
         st.caption("No status changes logged yet — the chart fills in as you mark jobs applied/interviewing/etc.")
+
+    # top 10 unapplied jobs
+    st.markdown("**Top 10 unapplied jobs**")
+
+    if not st.session_state.top_unapplied:
+        st.caption("No unapplied jobs — nice, you're caught up!")
+    else:
+        for job in st.session_state.top_unapplied:
+            job_col, btn_col = st.columns([5, 1])
+            with job_col:
+                st.markdown(
+                    f"**{job['company']}** — {job['title']}  \n"
+                    f"{job['location']} | score: {job.get('relevance_score', '?')}/10 | {job.get('relevance_reason', '')}  \n"
+                    f"[Apply here]({job['link']})"
+                )
+            with btn_col:
+                if st.button("Mark applied", key=f"top_apply_{job['id']}"):
+                    result = mark_status(job["id"], "applied")
+                    if result["success"]:
+                        st.session_state.top_unapplied = search_jobs(status="not applied", limit=10)
+                        st.rerun()
+                    else:
+                        st.error(result.get("error", "Failed to update status"))
+            st.divider()
 
 # chat display
 with left_col:
