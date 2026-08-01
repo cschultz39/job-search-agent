@@ -1,9 +1,27 @@
 import streamlit as st
 from agent import ask_agent
 import pandas as pd
-from sheet_tools import mark_status, search_jobs, get_status_counts, get_status_history_weekly
+import altair as alt
+from sheet_tools import mark_status, search_jobs, get_status_counts, get_status_history_weekly, STATUS_OPTIONS
 
 st.set_page_config(page_title="Job Search Agent", layout="wide")
+
+# custom CSS so page has no scrollbar
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 1.5rem;
+            padding-bottom: 0rem;
+        }
+        html, body, [data-testid="stAppViewContainer"] {
+            overflow: hidden;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("Job Search Agent")
 
 # page layout
@@ -41,8 +59,19 @@ with right_col:
     st.markdown("**Status breakdown over time (weekly)**")
     weekly = get_status_history_weekly()
     if weekly:
-        df = pd.DataFrame(weekly).set_index("week_of")
-        st.area_chart(df)
+        df = pd.DataFrame(weekly)
+        long_df = df.melt(id_vars="week_of", var_name="status", value_name="count")
+        chart = (
+            alt.Chart(long_df)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("week_of:O", title="Week of"),
+                y=alt.Y("count:Q", title="Job count"),
+                color=alt.Color("status:N", title="Status", sort=STATUS_OPTIONS),
+                tooltip=["week_of", "status", "count"],
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
     else:
         st.caption("No status changes logged yet — the chart fills in as you mark jobs applied/interviewing/etc.")
 
@@ -50,11 +79,13 @@ with right_col:
 with left_col:
     st.subheader("Chat")
     
-    for i, message in enumerate(st.session_state.messages):
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message["role"] == "assistant" and message.get("jobs"):
-                render_job_buttons(message["jobs"], i)
+    chat_container = st.container(height=380, border=False)
+    with chat_container:
+        for i, message in enumerate(st.session_state.messages):
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+                if message["role"] == "assistant" and message.get("jobs"):
+                    render_job_buttons(message["jobs"], i)
 
     if user_input := st.chat_input("Ask about your saved jobs..."):
         st.session_state.messages.append({"role": "user", "content": user_input})

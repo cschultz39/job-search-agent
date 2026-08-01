@@ -10,7 +10,7 @@ SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 STATUS_HISTORY_HEADER = ["job_id", "old_status", "new_status", "timestamp"]
 STATUS_OPTIONS = [
-    "n/a", "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
+    "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
 ]
 
 # in-memory cache of id -> row number
