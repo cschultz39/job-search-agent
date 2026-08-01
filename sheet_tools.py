@@ -16,15 +16,6 @@ STATUS_OPTIONS = [
 # in-memory cache of id -> row number
 _id_to_row = {}
 
-def get_sheet():
-    if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
-        with open("service_account.json", "w") as f:
-            f.write(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
-    creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
-    client = gspread.authorize(creds)
-    sheet_id = os.getenv("GOOGLE_SHEET_ID")
-    return client.open_by_key(sheet_id).sheet1
-
 def get_spreadsheet():
     if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
         with open("service_account.json", "w") as f:
@@ -33,6 +24,10 @@ def get_spreadsheet():
     client = gspread.authorize(creds)
     sheet_id = os.getenv("GOOGLE_SHEET_ID")
     return client.open_by_key(sheet_id)
+
+def get_sheet():
+    spreadsheet = get_spreadsheet()
+    return spreadsheet.worksheet("job_postings")
 
 def get_status_history_sheet():
     spreadsheet = get_spreadsheet()

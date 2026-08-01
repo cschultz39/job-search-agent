@@ -2,8 +2,6 @@
 import os
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-import gspread
-from google.oauth2.service_account import Credentials
 import json
 from anthropic import Anthropic
 
@@ -11,9 +9,7 @@ from anthropic import Anthropic
 load_dotenv()
 
 from sources import speedyapply
-from sheet_tools import get_status_history_sheet
-
-SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+from sheet_tools import get_status_history_sheet, get_sheet
 
 # --------------- relevance score via claude ----------------
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -91,16 +87,6 @@ def classify_job(job):
         return fallback
 
 # ----------------- add to tracker -------------------------
-def get_sheet():
-    if os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"):
-        with open("service_account.json", "w") as f:
-            f.write(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
-    
-    creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
-    client = gspread.authorize(creds)
-    sheet_id = os.getenv("GOOGLE_SHEET_ID")
-    return client.open_by_key(sheet_id).sheet1
-
 def get_existing_ids(sheet):
     records = sheet.get_all_records()
     return {row["id"] for row in records if row.get("id")}
