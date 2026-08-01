@@ -42,13 +42,15 @@ def search_jobs(status=None, min_score=None, company=None, limit=10):
     results.sort(key=score_of, reverse=True)
     return results[:limit]
 
+
+STATUS_OPTIONS = [
+    "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
+]
+
 def mark_status(job_id, new_status):
-    """
-    Finds the row matching job_id and updates its status column.
-    Returns True if a matching row was found and updated, False otherwise
-    — the caller (the agent) needs to know if the update actually happened,
-    since a wrong/stale job_id shouldn't fail silently.
-    """
+    if new_status not in STATUS_OPTIONS:
+        return {"success": False, "error": f"'{new_status}' is not a valid status. Must be one of: {', '.join(STATUS_OPTIONS)}"}
+    
     sheet = get_sheet()
     records = sheet.get_all_records()
     header = sheet.row_values(1)
@@ -57,5 +59,5 @@ def mark_status(job_id, new_status):
     for i, row in enumerate(records, start=2):  # row 1 is the header
         if row.get("id") == job_id:
             sheet.update_cell(i, status_col, new_status)
-            return True
-    return False
+            return {"success": True}
+    return {"success": False, "error": "job_id not found"}

@@ -29,7 +29,11 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "job_id": {"type": "string", "description": "The unique id of the job posting"},
-                "new_status": {"type": "string", "description": "The new status, e.g. 'applied', 'interviewing', 'rejected'"},
+                "new_status": {
+                    "type": "string",
+                    "enum": ["not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn"],
+                    "description": "The new application status",
+                },
             },
             "required": ["job_id", "new_status"],
         },
@@ -41,8 +45,7 @@ def run_tool(name, tool_input):
     if name == "search_jobs":
         return search_jobs(**tool_input)
     if name == "mark_status":
-        success = mark_status(**tool_input)
-        return {"success": success}
+        return mark_status(**tool_input)
     return {"error": f"unknown tool: {name}"}
 
 SYSTEM_PROMPT = """You are a job search assistant helping the user browse and manage saved job postings.
@@ -58,6 +61,8 @@ Format each job as a clear, scannable item, not a dense paragraph."""
 
 def ask_agent(user_message):
     messages = [{"role": "user", "content": user_message}]
+
+    found_jobs = {}
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -75,6 +80,11 @@ def ask_agent(user_message):
             if block.type == "tool_use":
                 print(f"  [Claude is calling: {block.name}({block.input})]")
                 result = run_tool(block.name, block.input)
+                if block.name == "search_jobs" and isinstance(result, list):
+                    for job in result:
+                        job_id = job.get("id")
+                        if job_id:
+                            found_jobs[job_id] = job
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -92,4 +102,4 @@ def ask_agent(user_message):
         )
 
     final_text = "".join(block.text for block in response.content if block.type == "text")
-    return final_text
+    return {"text": final_text, "jobs": list(found_jobs.values())}
