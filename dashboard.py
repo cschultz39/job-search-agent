@@ -1,9 +1,13 @@
 import streamlit as st
 from agent import ask_agent
-from sheet_tools import mark_status
+import pandas as pd
+from sheet_tools import mark_status, search_jobs, get_status_counts, get_status_history_weekly
 
-st.set_page_config(page_title="Job Search Agent")
+st.set_page_config(page_title="Job Search Agent", layout="wide")
 st.title("Job Search Agent")
+
+# page layout
+left_col, right_col = st.columns([1, 2])
 
 # messages persist when script reruns
 if "messages" not in st.session_state:
@@ -23,27 +27,48 @@ def render_job_buttons(jobs, msg_index):
             else:
                 st.error(f"Couldn't update status: {result.get('error')}")
 
-# redisplay full conversation so far
-for i, message in enumerate(st.session_state.messages):
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-        if message["role"] == "assistant" and message.get("jobs"):
-            render_job_buttons(message["jobs"], i)
+# metrics display
+with right_col:
+    st.subheader("Metrics")
 
-# chat-style text box
-if user_input := st.chat_input("Ask about your saved jobs..."):
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
+    # status counts
+    counts = get_status_counts()
+    count_cols = st.columns(len(counts))
+    for col, status in zip(count_cols, counts):
+        col.metric(status, counts[status])
 
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = ask_agent(user_input)
-        st.markdown(response["text"])
-        render_job_buttons(response["jobs"], len(st.session_state.messages))
+    # weekly status history chart
+    st.markdown("**Status breakdown over time (weekly)**")
+    weekly = get_status_history_weekly()
+    if weekly:
+        df = pd.DataFrame(weekly).set_index("week_of")
+        st.area_chart(df)
+    else:
+        st.caption("No status changes logged yet — the chart fills in as you mark jobs applied/interviewing/etc.")
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response["text"],
-        "jobs": response["jobs"],
-    })
+# chat display
+with left_col:
+    st.subheader("Chat")
+    
+    for i, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message["role"] == "assistant" and message.get("jobs"):
+                render_job_buttons(message["jobs"], i)
+
+    if user_input := st.chat_input("Ask about your saved jobs..."):
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = ask_agent(user_input)
+            st.markdown(response["text"])
+            render_job_buttons(response["jobs"], len(st.session_state.messages))
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response["text"],
+            "jobs": response["jobs"],
+        })

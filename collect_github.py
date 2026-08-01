@@ -11,6 +11,7 @@ from anthropic import Anthropic
 load_dotenv()
 
 from sources import speedyapply
+from sheet_tools import get_status_history_sheet
 
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -130,6 +131,14 @@ def add_new_jobs(sheet, jobs, existing_ids):
             classification.get("score", ""),
             classification.get("reason", ""),
         ])
+
+        try:
+            history_sheet = get_status_history_sheet()
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            history_sheet.append_row([job["id"], "n/a", "not applied", timestamp])
+        except Exception as e:
+            print(f"  Warning: job added but history logging failed: {e}")
+
         new_count += 1
     return new_count
 
