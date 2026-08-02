@@ -5,3 +5,10 @@ export async function getMetrics() {
     if (!res.ok) throw new Error("Failed to fetch metrics");
     return res.json();
 }
+
+export async function getWeeklyHistory() {
+    const res = await fetch(`${API_URL}/history`)
+    if (!res.ok) throw new Error("Failed to fetch history");
+    return res.json();
+}
+

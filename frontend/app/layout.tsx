@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Pixelify_Sans, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({ 
-  subsets: ["latin"], 
-  weight: ["500", "600", "700"], 
-  variable: "--font-fraunces" 
+const pixelifySans = Pixelify_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-pixelify",
 });
 
-const inter = Inter({ 
-  subsets: ["latin"], 
-  weight: ["400", "500", "600"], 
-  variable: "--font-inter" 
+const pressStart = Press_Start_2P({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-press-start",
 });
 
 export const metadata: Metadata = {
@@ -25,10 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-    >
-      <body className={`${fraunces.variable} ${inter.variable} font-sans antialiased`}>{children}</body>
+    <html lang="en" className={`${pixelifySans.variable} ${pressStart.variable}`}>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
