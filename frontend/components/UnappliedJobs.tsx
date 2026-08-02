@@ -30,7 +30,7 @@ export default function UnappliedJobs({ initialJobs }: { initialJobs: Job[] }) {
     }
   
     if (jobs.length === 0) {
-      return <p className="text-sm text-[color:var(--color-ink-soft)]">No unapplied jobs — nice, you're caught up!</p>;
+      return <p className="text-sm text-ink-soft">No unapplied jobs — nice, you're caught up!</p>;
     }
 
     return (
