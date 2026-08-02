@@ -12,3 +12,18 @@ export async function getWeeklyHistory() {
     return res.json();
 }
 
+export async function getUnappliedJobs() {
+    const res = await fetch(`${API_URL}/jobs?status=not+applied&limit=10`)
+    if (!res.ok) throw new Error("Failed to fetch jobs");
+    return res.json();
+}
+
+export async function markApplied(jobId: string) {
+    const res = await fetch(`${API_URL}/jobs/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId, new_status: "applied" }),
+    })
+    if (!res.ok) throw new Error("Failed to update status");
+    return res.json();
+}
