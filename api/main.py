@@ -54,7 +54,8 @@ def get_history():
 
 class ChatRequest(BaseModel):
     message: str
+    conversation_history: list = []
 @app.post("/chat")
 def chat(request: ChatRequest):
-    return ask_agent(request.message)
+    return ask_agent(request.message, request.conversation_history)
 

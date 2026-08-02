@@ -59,8 +59,11 @@ When listing job postings in your response, ALWAYS include for each one:
 Format each job as a clear, scannable item, not a dense paragraph."""
 
 
-def ask_agent(user_message):
-    messages = [{"role": "user", "content": user_message}]
+def ask_agent(user_message, conversation_history=None):
+    if conversation_history is None:
+        conversation_history = []
+
+    messages = list(conversation_history) + [{"role": "user", "content": user_message}]
 
     found_jobs = {}
 
@@ -102,4 +105,10 @@ def ask_agent(user_message):
         )
 
     final_text = "".join(block.text for block in response.content if block.type == "text")
-    return {"text": final_text, "jobs": list(found_jobs.values())}
+
+    updated_history = conversation_history + [
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": final_text},
+    ]
+
+    return {"text": final_text, "jobs": list(found_jobs.values()), "conversation_history": updated_history}
