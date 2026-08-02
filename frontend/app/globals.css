@@ -24,3 +24,69 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@theme {
+  --color-cream: #DFCBA5;
+  --color-cream-dark: #D2B98D;
+  --color-ink: #2B2620;
+  --color-ink-soft: #5B5347;
+  --color-heading: #12503B;
+  --color-line: #C4A876;
+
+  --color-emerald: #1F7A5C;
+  --color-emerald-d: #12503B;
+  --color-garnet: #A9273A;
+  --color-garnet-d: #6F1826;
+  --color-gold: #D4A017;
+  --color-gold-d: #8C6A0E;
+  --color-teal: #2C6E8E;
+  --color-teal-d: #1B4A61;
+  --color-plum: #6B4C82;
+  --color-plum-d: #453155;
+
+  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+}
+
+.tile {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 16px 10px;
+  text-align: center;
+  color: #fff;
+  isolation: isolate;
+}
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--c1);
+}
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  opacity: 0.85;
+  filter: blur(13px);
+  background:
+    radial-gradient(ellipse 55% 45% at 78% 15%, var(--c3) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 15% 90%, var(--c2) 0%, transparent 65%),
+    conic-gradient(from 200deg at 40% 60%, var(--c2) 0deg, transparent 90deg, var(--c3) 200deg, transparent 320deg);
+  mix-blend-mode: soft-light;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 26px;
+}

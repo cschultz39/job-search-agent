@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const fraunces = Fraunces({ 
+  subsets: ["latin"], 
+  weight: ["500", "600", "700"], 
+  variable: "--font-fraunces" 
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({ 
+  subsets: ["latin"], 
+  weight: ["400", "500", "600"], 
+  variable: "--font-inter" 
 });
 
 export const metadata: Metadata = {
@@ -25,9 +27,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className={`${fraunces.variable} ${inter.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }
