@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { sendChatMessage, markApplied, markNotInterested } from "@/lib/api";
 import JobCard from "@/components/JobCard";
 
@@ -27,8 +28,9 @@ export default function ChatWidget() {
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ key: string; action: "applied" | "not-interested" } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -54,7 +56,7 @@ export default function ChatWidget() {
 
   async function handleMarkApplied(msgIndex: number, jobId: string) {
     const key = `${msgIndex}_${jobId}`;
-    setPendingId(key);
+    setPendingAction({ key, action: "applied" });
     try {
       await markApplied(jobId);
       setMessages((prev) =>
@@ -64,16 +66,17 @@ export default function ChatWidget() {
             : m
         )
       );
+      router.refresh();
     } catch (err) {
       console.error(err);
     } finally {
-      setPendingId(null);
+      setPendingAction(null);
     }
   }
 
   async function handleMarkNotInterested(msgIndex: number, jobId: string) {
     const key = `${msgIndex}_${jobId}`;
-    setPendingId(key);
+    setPendingAction({ key, action: "not-interested" });
     try {
       await markNotInterested(jobId);
       setMessages((prev) =>
@@ -83,10 +86,11 @@ export default function ChatWidget() {
             : m
         )
       );
+      router.refresh();
     } catch (err) {
       console.error(err);
     } finally {
-      setPendingId(null);
+      setPendingAction(null);
     }
   }
 
@@ -143,7 +147,8 @@ export default function ChatWidget() {
                         <JobCard
                           key={j.id}
                           job={j}
-                          pending={pendingId === `${i}_${j.id}`}
+                          pendingApplied={pendingAction?.key === `${i}_${j.id}` && pendingAction.action === "applied"}
+                          pendingNotInterested={pendingAction?.key === `${i}_${j.id}` && pendingAction.action === "not-interested"}
                           onMarkApplied={(jobId) => handleMarkApplied(i, jobId)}
                           onMarkNotInterested={(jobId) => handleMarkNotInterested(i, jobId)}
                         />

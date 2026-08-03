@@ -12,12 +12,13 @@ type Job = {
 
 type JobCardProps = {
   job: Job;
-  pending: boolean;
+  pendingApplied: boolean;
+  pendingNotInterested: boolean;
   onMarkApplied: (jobId: string) => void;
   onMarkNotInterested: (jobId: string) => void;
 };
 
-export default function JobCard({ job, pending, onMarkApplied, onMarkNotInterested }: JobCardProps) {
+export default function JobCard({ job, pendingApplied, pendingNotInterested, onMarkApplied, onMarkNotInterested }: JobCardProps) {
   return (
     <div style={{ borderBottom: "2px solid var(--color-line)", padding: "10px 0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -52,7 +53,7 @@ export default function JobCard({ job, pending, onMarkApplied, onMarkNotInterest
           </a>
           <button
             onClick={() => onMarkApplied(job.id)}
-            disabled={pending}
+            disabled={pendingApplied || pendingNotInterested}
             className="font-pixel"
             style={{
               fontSize: 7,
@@ -61,15 +62,15 @@ export default function JobCard({ job, pending, onMarkApplied, onMarkNotInterest
               color: "#fff",
               border: "3px solid var(--color-not-applied-d)",
               padding: "6px 8px",
-              cursor: pending ? "default" : "pointer",
-              opacity: pending ? 0.6 : 1,
+              cursor: pendingApplied || pendingNotInterested ? "default" : "pointer",
+              opacity: pendingApplied || pendingNotInterested ? 0.6 : 1,
             }}
           >
-            {pending ? "..." : "MARK APPLIED"}
+            {pendingApplied ? "..." : "MARK APPLIED"}
           </button>
           <button
             onClick={() => onMarkNotInterested(job.id)}
-            disabled={pending}
+            disabled={pendingApplied || pendingNotInterested}
             className="font-pixel"
             style={{
               fontSize: 7,
@@ -78,11 +79,11 @@ export default function JobCard({ job, pending, onMarkApplied, onMarkNotInterest
               color: "#fff",
               border: "3px solid var(--color-rejected-d)",
               padding: "6px 8px",
-              cursor: pending ? "default" : "pointer",
-              opacity: pending ? 0.6 : 1,
+              cursor: pendingApplied || pendingNotInterested ? "default" : "pointer",
+              opacity: pendingApplied || pendingNotInterested ? 0.6 : 1,
             }}
           >
-            {pending ? "..." : "NOT INTERESTED"}
+            {pendingNotInterested ? "..." : "NOT INTERESTED"}
           </button>
         </div>
       </div>
