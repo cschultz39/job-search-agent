@@ -39,7 +39,7 @@ Built as a personal tool to reduce the manual overhead of a new-grad job search 
          automatically, via GitHub Actions (.github/workflows/daily.yml)
 ```
 
-**Note:** the dashboard was originally built in Streamlit (`dashboard.py` + `agent.py`'s chat-based tool-use agent). It has since been migrated to a Next.js + Tailwind frontend with a FastAPI backend, due to Streamlit's CSS/layout limitations and slow (10-15s) full-script reruns on every interaction. `dashboard.py` and `agent.py` are retained for reference but are no longer the active UI layer — see "Status / next steps" below for the plan to port the chat feature into the new stack.
+**Note:** the dashboard was originally built in Streamlit (`dashboard.py` + `agent.py`'s chat-based tool-use agent). It has since been migrated to a Next.js + Tailwind frontend with a FastAPI backend, due to Streamlit's CSS/layout limitations and slow (10-15s) full-script reruns on every interaction. `dashboard.py` is retained for reference only; `agent.py`'s tool-use logic is now the active backend for the `/chat` endpoint, called from `ChatWidget.tsx` on the Next.js side.
 
 ## What it does
 
@@ -76,7 +76,9 @@ job-search-agent/
 │   ├── components/
 │   │   ├── MetricsTiles.tsx      # Status count tiles, colors sourced from lib/statusColors.ts
 │   │   ├── StatusChart.tsx       # Weekly status-history chart (Recharts), one line per status
-│   │   └── UnappliedJobs.tsx     # Scrollable unapplied jobs list with Apply/Mark Applied buttons
+│   │   ├── UnappliedJobs.tsx     # Scrollable unapplied jobs list, renders JobCard per job
+│   │   ├── JobCard.tsx           # Shared job card: apply link, Mark Applied, Not Interested buttons
+│   │   └── ChatWidget.tsx        # Floating chat widget: talks to /chat, renders JobCard for returned jobs
 │   └── lib/
 │       ├── api.ts                # Fetch wrappers for the FastAPI backend
 │       └── statusColors.ts       # Single source of truth for status -> color/label mapping
@@ -148,14 +150,16 @@ The FastAPI backend wraps the existing `sheet_tools.py` logic behind REST endpoi
 - `PATCH /jobs/status` — update a posting's status (`job_id`, `new_status`), backed by `mark_status()`, validated against the same fixed status set used throughout the sheet
 - `GET /metrics` — status counts, backed by `get_status_counts()`
 - `GET /history` — weekly status-history snapshots, backed by `get_status_history_weekly()`
-- `/chat` — reserved for the conversational agent (not yet wired up in the new stack — see "Status / next steps")
+- `PATCH /jobs/not-interested` — marks a posting "not interested" (sets status, score to 1, and a fixed reason), backed by `mark_not_interested()`
+- `POST /chat` — conversational agent endpoint, backed by `agent.py`'s `ask_agent()` (search_jobs / mark_status tools); `ChatWidget.tsx` sends `message` + `conversation_history` and renders returned text plus any jobs via `JobCard`
 
 The Next.js frontend renders three main pieces, all sharing a single `lib/statusColors.ts` mapping so colors, labels, and status order can never drift out of sync across components:
 - **Metrics tiles** (`MetricsTiles.tsx`) — one tile per status, full-width row across the top
 - **Status-over-time chart** (`StatusChart.tsx`) — Recharts line chart, one step-line per status, each colored to match its tile, with a custom tooltip that shows only the hovered status (or a small cluster of statuses within ~10 counts of each other, to handle overlapping zero-value dots)
-- **Unapplied jobs list** (`UnappliedJobs.tsx`) — scrollable card matching the chart's height, each entry showing company/title/location/score with "Apply here" and "Mark applied" buttons
+- **Unapplied jobs list** (`UnappliedJobs.tsx`) — scrollable card matching the chart's height, each entry rendered via `JobCard.tsx` with "Apply here", "Mark applied", and "Not interested" buttons
+- **Floating chat widget** (`ChatWidget.tsx`) — bottom-right toggle button opens a chat panel; sends messages to `/chat`, maintains conversation history client-side, and renders any returned jobs (excluding already-applied ones) as `JobCard`s with the same applied/not-interested actions
 
-The UI uses a pixel-art aesthetic (Press Start 2P for headers/tile numbers/buttons, Pixelify Sans for body text, chunky offset drop-shadow borders instead of soft shadows) in a strawberry-matcha color palette — matcha greens for early/neutral statuses, strawberry pinks for interview stages, muted desaturated tones for rejected/withdrawn.
+The UI uses a pixel-art aesthetic (Press Start 2P for headers/tile numbers/buttons, Silkscreen for body text, chunky offset drop-shadow borders instead of soft shadows) in a strawberry-matcha color palette — matcha greens for early/neutral statuses, strawberry pinks for interview stages, muted desaturated tones for rejected/withdrawn.
 
 ## Status / next steps
 
@@ -167,8 +171,8 @@ The UI uses a pixel-art aesthetic (Press Start 2P for headers/tile numbers/butto
 - [x] Migrate dashboard from Streamlit to Next.js + FastAPI
 - [x] Metrics tiles, status-history chart, unapplied jobs list with mark-applied
 - [x] Pixelated strawberry-matcha visual redesign
-- [ ] **Floating chat widget** — port the `agent.py` tool-use agent (search_jobs / mark_status) into a chat interface on the Next.js dashboard, wired through the FastAPI `/chat` endpoint, styled to match the pixel-art theme
-- [ ] Dealbreaker filtering in default dashboard view
+- [x] **Floating chat widget** — `agent.py` tool-use agent (search_jobs / mark_status) ported into `ChatWidget.tsx`, wired through `/chat`, styled to match the pixel-art theme
+- [x] **"Not interested" manual filter** — `PATCH /jobs/not-interested` + `mark_not_interested()`, exposed via a button on `JobCard.tsx` (used in both the unapplied list and chat results)
 - [ ] Additional sources (Greenhouse/Lever/Ashby direct pulls, Gmail parsing for LinkedIn/Handshake alerts)
 - [ ] Re-enable SimplifyJobs once it adds 2027 postings
 - [ ] Deployment — Next.js on Vercel, FastAPI on Render/Railway/Fly.io
