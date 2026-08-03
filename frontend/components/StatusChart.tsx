@@ -48,7 +48,7 @@ function SingleStatusTooltip({ active, payload, label, hoveredStatus }: any) {
 
     return (
       <div ref={containerRef} style={{ width: "100%" }}>
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={248}>
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--color-line)" strokeDasharray="0" />
           <XAxis dataKey="week_of" tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }} padding={{ left: sideMargin, right: sideMargin }} />

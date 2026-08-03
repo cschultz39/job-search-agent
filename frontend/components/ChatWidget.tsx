@@ -46,6 +46,7 @@ export default function ChatWidget() {
       const res = await sendChatMessage(text, conversationHistory);
       setConversationHistory(res.conversation_history);
       setMessages((prev) => [...prev, { role: "assistant", content: res.text, jobs: res.jobs }]);
+      router.refresh();
     } catch (err) {
       console.error(err);
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong reaching the agent." }]);
@@ -129,18 +130,37 @@ export default function ChatWidget() {
               </p>
             )}
             {messages.map((m, i) => (
-              <div key={i} style={{ marginBottom: 14 }}>
+              <div
+                key={i}
+                style={{
+                  marginBottom: 14,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: m.role === "user" ? "flex-end" : "flex-start",
+                }}
+              >
                 <p
                   className="text-xs font-semibold"
                   style={{ color: m.role === "user" ? "var(--color-heading)" : "var(--color-technical-d)", margin: "0 0 2px" }}
                 >
                   {m.role === "user" ? "you" : "agent"}
                 </p>
-                <p className="text-sm" style={{ color: "var(--color-ink)", margin: 0, whiteSpace: "pre-wrap" }}>
+                <div
+                  className="text-sm"
+                  style={{
+                    background: m.role === "user" ? "var(--color-heading-light)" : "var(--color-technical)",
+                    color: "#fff",
+                    padding: "8px 12px",
+                    maxWidth: "85%",
+                    whiteSpace: "pre-wrap",
+                    border: `2px solid ${m.role === "user" ? "var(--color-heading)" : "var(--color-technical-d)"}`,
+                    boxShadow: `3px 3px 0 ${m.role === "user" ? "var(--color-heading)" : "var(--color-technical-d)"}`,
+                  }}
+                >
                   {m.content}
-                </p>
+                </div>
                 {m.jobs && m.jobs.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, width: "100%" }}>
                     {m.jobs
                       .filter((j) => (j.status ?? "not applied").toLowerCase() !== "applied")
                       .map((j) => (
