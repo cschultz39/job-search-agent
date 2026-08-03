@@ -28,6 +28,16 @@ export async function markApplied(jobId: string) {
     return res.json();
 }
 
+export async function markNotInterested(jobId: string) {
+    const res = await fetch(`${API_URL}/jobs/not-interested`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId }),
+    })
+    if (!res.ok) throw new Error("Failed to update status");
+    return res.json();
+}
+
 export async function sendChatMessage(message: string, conversationHistory: any[] = []) {
     const res = await fetch(`${API_URL}/chat`, {
         method: "POST",

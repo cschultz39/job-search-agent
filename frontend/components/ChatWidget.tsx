@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { sendChatMessage, markApplied } from "@/lib/api";
+import { sendChatMessage, markApplied, markNotInterested } from "@/lib/api";
 import JobCard from "@/components/JobCard";
 
 type Job = {
@@ -71,6 +71,25 @@ export default function ChatWidget() {
     }
   }
 
+  async function handleMarkNotInterested(msgIndex: number, jobId: string) {
+    const key = `${msgIndex}_${jobId}`;
+    setPendingId(key);
+    try {
+      await markNotInterested(jobId);
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === msgIndex && m.jobs
+            ? { ...m, jobs: m.jobs.filter((j) => j.id !== jobId) }
+            : m
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   return (
     <div style={{ position: "fixed", bottom: 12, right: 15, zIndex: 999, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
       {open && (
@@ -126,6 +145,7 @@ export default function ChatWidget() {
                           job={j}
                           pending={pendingId === `${i}_${j.id}`}
                           onMarkApplied={(jobId) => handleMarkApplied(i, jobId)}
+                          onMarkNotInterested={(jobId) => handleMarkNotInterested(i, jobId)}
                         />
                       ))}
                   </div>

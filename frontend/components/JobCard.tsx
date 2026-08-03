@@ -14,9 +14,10 @@ type JobCardProps = {
   job: Job;
   pending: boolean;
   onMarkApplied: (jobId: string) => void;
+  onMarkNotInterested: (jobId: string) => void;
 };
 
-export default function JobCard({ job, pending, onMarkApplied }: JobCardProps) {
+export default function JobCard({ job, pending, onMarkApplied, onMarkNotInterested }: JobCardProps) {
   return (
     <div style={{ borderBottom: "2px solid var(--color-line)", padding: "10px 0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -65,6 +66,23 @@ export default function JobCard({ job, pending, onMarkApplied }: JobCardProps) {
             }}
           >
             {pending ? "..." : "MARK APPLIED"}
+          </button>
+          <button
+            onClick={() => onMarkNotInterested(job.id)}
+            disabled={pending}
+            className="font-pixel"
+            style={{
+              fontSize: 7,
+              width: 96,
+              background: "var(--color-rejected)",
+              color: "#fff",
+              border: "3px solid var(--color-rejected-d)",
+              padding: "6px 8px",
+              cursor: pending ? "default" : "pointer",
+              opacity: pending ? 0.6 : 1,
+            }}
+          >
+            {pending ? "..." : "NOT INTERESTED"}
           </button>
         </div>
       </div>

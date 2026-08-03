@@ -13,7 +13,7 @@ SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 STATUS_HISTORY_HEADER = ["job_id", "old_status", "new_status", "timestamp"]
 STATUS_OPTIONS = [
-    "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
+    "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn", "not interested",
 ]
 
 CENTRAL_TZ = ZoneInfo("America/Chicago")
@@ -152,6 +152,39 @@ def mark_status(job_id, new_status):
         history_sheet = get_status_history_sheet()
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         history_sheet.append_row([job_id, old_status, new_status, timestamp])
+    except Exception as e:
+        print(f"Warning: status update succeeded but history logging failed: {e}")
+
+    return {"success": True}
+
+def mark_not_interested(job_id):
+    sheet = get_sheet()
+    header = sheet.row_values(1)
+    id_col = header.index("id") + 1
+    status_col = header.index("status") + 1
+    score_col = header.index("relevance_score") + 1
+    reason_col = header.index("relevance_reason") + 1
+
+    if not _id_to_row:
+        _refresh_id_cache(sheet, id_col)
+
+    row = _id_to_row.get(job_id)
+    if row is None:
+        _refresh_id_cache(sheet, id_col)
+        row = _id_to_row.get(job_id)
+
+    if row is None:
+        return {"success": False, "error": "job_id not found"}
+
+    old_status = sheet.cell(row, status_col).value
+    sheet.update_cell(row, status_col, "not interested")
+    sheet.update_cell(row, score_col, 1)
+    sheet.update_cell(row, reason_col, "candidate is not interested")
+
+    try:
+        history_sheet = get_status_history_sheet()
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        history_sheet.append_row([job_id, old_status, "not interested", timestamp])
     except Exception as e:
         print(f"Warning: status update succeeded but history logging failed: {e}")
 

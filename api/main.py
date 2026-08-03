@@ -11,7 +11,7 @@ import os
 
 # allows main to access sheet_tools while living folder below repo root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sheet_tools import get_status_counts, search_jobs, mark_status, get_status_history_weekly
+from sheet_tools import get_status_counts, search_jobs, mark_status, get_status_history_weekly, mark_not_interested
 from agent import ask_agent
 
 app = FastAPI(title="Job Search Agent API")
@@ -44,6 +44,15 @@ class StatusUpdate(BaseModel):
 @app.patch("/jobs/status")
 def update_job_status(update: StatusUpdate):
     result = mark_status(update.job_id, update.new_status)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+class NotInterestedRequest(BaseModel):
+    job_id: str
+@app.patch("/jobs/not-interested")
+def update_not_interested(request: NotInterestedRequest):
+    result = mark_not_interested(request.job_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error"))
     return result
