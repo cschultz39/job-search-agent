@@ -11,7 +11,7 @@ import os
 
 # allows main to access sheet_tools while living folder below repo root
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sheet_tools import get_status_counts, search_jobs, mark_status, get_status_history_weekly, mark_not_interested
+from db_tools import get_status_counts, search_jobs, mark_status, get_status_history_weekly, mark_not_interested
 from agent import ask_agent
 
 app = FastAPI(title="Job Search Agent API")

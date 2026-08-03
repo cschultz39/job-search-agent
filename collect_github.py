@@ -9,7 +9,7 @@ from anthropic import Anthropic
 load_dotenv()
 
 from sources import speedyapply
-from sheet_tools import get_status_history_sheet, get_sheet
+from db_tools import get_client
 
 # --------------- relevance score via claude ----------------
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -87,11 +87,11 @@ def classify_job(job):
         return fallback
 
 # ----------------- add to tracker -------------------------
-def get_existing_ids(sheet):
-    records = sheet.get_all_records()
-    return {row["id"] for row in records if row.get("id")}
+def get_existing_ids(client):
+    result = client.table("job_postings").select("id").execute()
+    return {row["id"] for row in result.data}
 
-def add_new_jobs(sheet, jobs, existing_ids):
+def add_new_jobs(client, jobs, existing_ids):
     new_count = 0
     for job in jobs:
         if job["id"] in existing_ids:
@@ -104,24 +104,27 @@ def add_new_jobs(sheet, jobs, existing_ids):
             print(f"  Classifying: {job['company']} — {job['title']}")
             classification = classify_job(job)
 
-        sheet.append_row([
-            job["id"],
-            job["company"],
-            job["title"],
-            job["location"],
-            job["link"],
-            job["source"],
-            job["date_posted"],
-            datetime.now(timezone.utc).strftime("%Y-%m-%d"),  # date_scraped
-            "not applied",  # status TBD
-            classification.get("score", ""),
-            classification.get("reason", ""),
-        ])
+        client.table("job_postings").insert({
+            "id": job["id"],
+            "company": job["company"],
+            "title": job["title"],
+            "location": job["location"],
+            "link": job["link"],
+            "source": job["source"],
+            "date_posted": job["date_posted"],
+            "date_scraped": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "status": "not applied",
+            "relevance_score": classification.get("score"),
+            "relevance_reason": classification.get("reason", ""),
+        }).execute()
 
         try:
-            history_sheet = get_status_history_sheet()
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            history_sheet.append_row([job["id"], "n/a", "not applied", timestamp])
+            client.table("status_history").insert({
+                "job_id": job["id"],
+                "old_status": "n/a",
+                "new_status": "not applied",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }).execute()
         except Exception as e:
             print(f"  Warning: job added but history logging failed: {e}")
 
@@ -133,13 +136,13 @@ if __name__ == "__main__":
     jobs = speedyapply.get_jobs()
     print(f"{len(jobs)} postings match filters")
 
-    print("Connecting to Google Sheet...")
-    sheet = get_sheet()
+    print("Connecting to Supabase...")
+    client = get_client()
 
     print("Checking which ones are already saved...")
-    existing_ids = get_existing_ids(sheet)
+    existing_ids = get_existing_ids(client)
     print(f"{len(existing_ids)} already in the sheet")
 
     print("Adding new postings...")
-    added = add_new_jobs(sheet, jobs, existing_ids)
+    added = add_new_jobs(client, jobs, existing_ids)
     print(f"\nAdded {added} new posting(s) to the sheet.")

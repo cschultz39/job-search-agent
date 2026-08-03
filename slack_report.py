@@ -5,23 +5,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import requests
-import gspread
-from google.oauth2.service_account import Credentials
-
-SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+from db_tools import get_client
 
 # ---------------- access tracker -------------------------
-def get_sheet():
-    creds = Credentials.from_service_account_file("service_account.json", scopes=SHEETS_SCOPES)
-    client = gspread.authorize(creds)
-    sheet_id = os.getenv("GOOGLE_SHEET_ID")
-    return client.open_by_key(sheet_id).sheet1
 
-# pulls every row and filters to jobs scraped today
-def get_todays_jobs(sheet):
+
+# pulls today's jobs directly via a filtered query
+def get_todays_jobs(client):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    records = sheet.get_all_records()
-    todays = [r for r in records if r.get("date_scraped") == today]
+    result = (
+        client.table("job_postings")
+        .select("*")
+        .eq("date_scraped", today)
+        .execute()
+    )
+    todays = result.data
 
     # sort by relevance score, highest first — falls back to 0 if
     # score is missing/blank so it doesn't crash on empty strings
@@ -57,11 +55,11 @@ def send_to_slack(message):
     return r.status_code
 
 if __name__ == "__main__":
-    print("Connecting to Google Sheet...")
-    sheet = get_sheet()
+    print("Connecting to Supabase...")
+    client = get_client()
 
     print("Finding today's new postings...")
-    jobs = get_todays_jobs(sheet)
+    jobs = get_todays_jobs(client)
     print(f"Found {len(jobs)} postings from today")
 
     print("Formatting and sending to Slack...")
