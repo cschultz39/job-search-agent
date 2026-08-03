@@ -7,6 +7,8 @@ import { getWeeklyHistory } from "@/lib/api";
 import UnappliedJobs from "@/components/UnappliedJobs";
 import { getUnappliedJobs } from "@/lib/api";
 
+import ChatWidget from "@/components/ChatWidget";
+
 export default async function Home() {
   const metrics = await getMetrics();
   const weeklyHistory = await getWeeklyHistory();
@@ -39,6 +41,7 @@ export default async function Home() {
           </div>
         </div>
       </div>
+      <ChatWidget />
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { markApplied } from "@/lib/api";
+import JobCard from "@/components/JobCard";
 
 type Job = {
     id: string;
@@ -34,60 +35,15 @@ export default function UnappliedJobs({ initialJobs }: { initialJobs: Job[] }) {
     }
 
     return (
-        <div>
-          {jobs.map((job) => (
-            <div key={job.id} style={{ borderBottom: "2px solid var(--color-line)", padding: "10px 0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="font-semibold text-sm" style={{ color: "var(--color-ink)", margin: 0 }}>
-                    {job.company}
-                  </p>
-                  <p className="font-semibold text-sm" style={{ color: "var(--color-ink)", margin: 0 }}>
-                    {job.title}
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--color-ink-soft)", margin: "8px 0 0" }}>
-                    location: {job.location}<br />
-                    score: {job.relevance_score ?? "?"}
-                  </p>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", flexShrink: 0 }}>
-                  <a href={job.link} target="_blank" rel="noopener noreferrer">
-                    <button
-                      className="font-pixel"
-                      style={{
-                        fontSize: 7,
-                        width: 96,
-                        background: "var(--color-oa)",
-                        color: "#fff",
-                        border: "3px solid var(--color-oa-d)",
-                        padding: "6px 8px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      APPLY HERE
-                    </button>
-                  </a>
-                  <button
-                    onClick={() => handleMarkApplied(job.id)}
-                    disabled={pendingId === job.id}
-                    className="font-pixel"
-                    style={{
-                      fontSize: 7,
-                      width: 96,
-                      background: "var(--color-not-applied)",
-                      color: "#fff",
-                      border: "3px solid var(--color-not-applied-d)",
-                      padding: "6px 8px",
-                      cursor: pendingId === job.id ? "default" : "pointer",
-                      opacity: pendingId === job.id ? 0.6 : 1,
-                    }}
-                  >
-                    {pendingId === job.id ? "..." : "MARK APPLIED"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-    );
+      <div>
+        {jobs.map((job) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            pending={pendingId === job.id}
+            onMarkApplied={handleMarkApplied}
+          />
+        ))}
+      </div>
+  );
 }

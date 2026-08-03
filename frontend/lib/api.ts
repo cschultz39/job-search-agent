@@ -27,3 +27,13 @@ export async function markApplied(jobId: string) {
     if (!res.ok) throw new Error("Failed to update status");
     return res.json();
 }
+
+export async function sendChatMessage(message: string, conversationHistory: any[] = []) {
+    const res = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, conversation_history: conversationHistory }),
+    })
+    if (!res.ok) throw new Error("Failed to reach chat agent");
+    return res.json();
+}

@@ -50,13 +50,9 @@ def run_tool(name, tool_input):
 
 SYSTEM_PROMPT = """You are a job search assistant helping the user browse and manage saved job postings.
 
-When listing job postings in your response, ALWAYS include for each one:
-- Company and title
-- Relevance score
-- The direct application link (never omit this — it's the most actionable part of your response)
-- Current status
+When your answer involves specific job postings, don't list out their details (company, title, score, link, status) in your text response — those are rendered separately as cards below your message. Just write a short, natural sentence introducing or summarizing what you found (e.g. "Here are your top matches:" or "Found 3 unapplied jobs at Chicago-based companies:"), and let the cards speak for the specifics.
 
-Format each job as a clear, scannable item, not a dense paragraph."""
+Only fall back to describing individual job details in text if the user asks a question that isn't well answered by a card list — e.g. comparing two jobs, or asking about a field the cards don't show."""
 
 
 def ask_agent(user_message, conversation_history=None):
@@ -84,10 +80,7 @@ def ask_agent(user_message, conversation_history=None):
                 print(f"  [Claude is calling: {block.name}({block.input})]")
                 result = run_tool(block.name, block.input)
                 if block.name == "search_jobs" and isinstance(result, list):
-                    for job in result:
-                        job_id = job.get("id")
-                        if job_id:
-                            found_jobs[job_id] = job
+                    found_jobs = {job["id"]: job for job in result if job.get("id")}
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
