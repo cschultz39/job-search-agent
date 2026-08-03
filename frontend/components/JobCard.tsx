@@ -24,7 +24,7 @@ export default function JobCard({ job, pending, onMarkApplied }: JobCardProps) {
           <p className="font-semibold text-sm" style={{ color: "var(--color-ink)", margin: 0 }}>
             {job.company}
           </p>
-          <p className="font-semibold text-sm" style={{ color: "var(--color-ink)", margin: 0 }}>
+          <p className="text-sm" style={{ color: "var(--color-ink)", margin: 0 }}>
             {job.title}
           </p>
           <p className="text-xs" style={{ color: "var(--color-ink-soft)", margin: "8px 0 0" }}>

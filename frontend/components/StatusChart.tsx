@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { STATUS_COLORS, STATUS_LABELS, STATUS_ORDER } from "@/lib/statusColors";
 
@@ -25,14 +25,33 @@ function SingleStatusTooltip({ active, payload, label, hoveredStatus }: any) {
     );
   }
 
-export default function StatusChart({ data }: { data: WeeklySnapshot[] }) {
+  export default function StatusChart({ data }: { data: WeeklySnapshot[] }) {
     const [hoveredStatus, setHoveredStatus] = useState<string | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerWidth, setContainerWidth] = useState(0);
+
+    useEffect(() => {
+      if (!containerRef.current) return;
+      const observer = new ResizeObserver((entries) => {
+        setContainerWidth(entries[0].contentRect.width);
+      });
+      observer.observe(containerRef.current);
+      return () => observer.disconnect();
+    }, []);
+
+    const PX_PER_WEEK = 70;
+    const MIN_PLOT_WIDTH = 200;
+    const plotWidth = containerWidth
+      ? Math.min(containerWidth, Math.max(data.length * PX_PER_WEEK, MIN_PLOT_WIDTH))
+      : containerWidth;
+    const sideMargin = containerWidth ? Math.max((containerWidth - plotWidth) / 2, 0) : 0;
 
     return (
+      <div ref={containerRef} style={{ width: "100%" }}>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--color-line)" strokeDasharray="0" />
-          <XAxis dataKey="week_of" tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }} />
+          <XAxis dataKey="week_of" tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }} padding={{ left: sideMargin, right: sideMargin }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--color-ink-soft)" }} />
           <Tooltip content={<SingleStatusTooltip hoveredStatus={hoveredStatus} />} />
             {STATUS_ORDER.map((status) => (
@@ -54,5 +73,6 @@ export default function StatusChart({ data }: { data: WeeklySnapshot[] }) {
           ))}
         </LineChart>
       </ResponsiveContainer>
+      </div>
     );
   }

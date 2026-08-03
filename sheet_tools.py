@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -14,6 +15,8 @@ STATUS_HISTORY_HEADER = ["job_id", "old_status", "new_status", "timestamp"]
 STATUS_OPTIONS = [
     "not applied", "applied", "oa", "behavioral interview", "technical interview", "offer", "rejected", "withdrawn",
 ]
+
+CENTRAL_TZ = ZoneInfo("America/Chicago")
 
 # in-memory cache of id -> row number
 _id_to_row = {}
@@ -69,14 +72,15 @@ def get_status_history_weekly():
         return []
     
     def parse_ts(ts_str):
-        return datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        utc_dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        return utc_dt.astimezone(CENTRAL_TZ)
     
     events = sorted(events, key=lambda e: parse_ts(e["timestamp"]))
 
     job_status = {}
-    first_week_start = parse_ts(events[0]["timestamp"])
+    first_week_start = parse_ts(events[0]["timestamp"]).date()
     first_week_start -= timedelta(days=first_week_start.weekday())
-    current_week_start = datetime.now(timezone.utc)
+    current_week_start = datetime.now(CENTRAL_TZ).date()
     current_week_start -= timedelta(days=current_week_start.weekday())
 
     weekly_snapshots = []
@@ -84,7 +88,7 @@ def get_status_history_weekly():
     event_idx = 0
     while week_start <= current_week_start:
         week_end = week_start + timedelta(days=7)
-        while event_idx < len(events) and parse_ts(events[event_idx]["timestamp"]) < week_end:
+        while event_idx < len(events) and parse_ts(events[event_idx]["timestamp"]).date() < week_end:
             e = events[event_idx]
             job_status[e["job_id"]] = e["new_status"]
             event_idx += 1

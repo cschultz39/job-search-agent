@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Pixelify_Sans, Press_Start_2P } from "next/font/google";
+import { Silkscreen, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 
-const pixelifySans = Pixelify_Sans({
+const silkscreen = Silkscreen({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-pixelify",
+  weight: ["400", "700"],
+  variable: "--font-silkscreen",
 });
 
 const pressStart = Press_Start_2P({
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${pixelifySans.variable} ${pressStart.variable}`}>
+    <html lang="en" className={`${silkscreen.variable} ${pressStart.variable}`}>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
