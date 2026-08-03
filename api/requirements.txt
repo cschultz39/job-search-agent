@@ -5,3 +5,4 @@ anthropic==0.120.2
 gspread==6.2.1
 google-auth==2.56.2
 tzdata
+supabase

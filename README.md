@@ -1,6 +1,6 @@
 # Job Search Agent
 
-An automated pipeline that collects new-grad Software Engineering / Forward Deployed Engineer job postings, filters and scores them against personal preferences using Claude, tracks them in Google Sheets, and provides a Next.js dashboard (backed by a FastAPI service) to browse postings and manage application status — with a daily Slack digest of new postings.
+An automated pipeline that collects new-grad Software Engineering / Forward Deployed Engineer job postings, filters and scores them against personal preferences using Claude, tracks them in a Supabase (Postgres) database, and provides a Next.js dashboard (backed by a FastAPI service) to browse postings and manage application status — with a daily Slack digest of new postings.
 
 Built as a personal tool to reduce the manual overhead of a new-grad job search (target: Summer/Fall 2027 start), and as a hands-on project in building agentic tools with the Claude API and a full-stack web app.
 
@@ -8,46 +8,47 @@ Built as a personal tool to reduce the manual overhead of a new-grad job search 
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Data sources    │ --> │  Collector        │ --> │  Google Sheet    │
-│  (GitHub repos)  │     │  (collect_github  │     │  (single source  │
-│                  │     │  .py)             │     │  of truth)       │
+│  Data sources   │ --> │  Collector       │ --> │  Supabase       │
+│  (GitHub repos) │     │  (collect_github │     │  (Postgres,     │
+│                 │     │  .py)            │     │  single source  │
+│                 │     │                  │     │  of truth)      │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
-                                  │                          │
-                                  v                          v
+                                 │                          │
+                                 v                          v
                          ┌──────────────────┐     ┌─────────────────┐
-                         │  Claude API        │     │  Slack digest    │
-                         │  classification    │     │  (slack_report   │
-                         │  (relevance score) │     │  .py)            │
+                         │  Claude API      │     │  Slack digest   │
+                         │  classification  │     │  (slack_report  │
+                         │ (relevance score)│     │  .py)           │
                          └──────────────────┘     └─────────────────┘
 
                          ┌──────────────────────────────────────────┐
-                         │  FastAPI backend                           │
-                         │  Wraps agent.py / sheet_tools.py logic      │
-                         │  via /jobs, /jobs/status, /metrics,        │
-                         │  /history, /chat endpoints                  │
+                         │  FastAPI backend                         │
+                         │  Wraps agent.py / sheet_tools.py logic   │
+                         │  via /jobs, /jobs/status, /metrics,      │
+                         │  /history, /chat endpoints               │
                          └──────────────────────────────────────────┘
                                           │
                                           v
                          ┌──────────────────────────────────────────┐
-                         │  Next.js + Tailwind dashboard               │
-                         │  Metrics tiles, status-over-time chart,     │
-                         │  unapplied jobs list — pixelated UI          │
-                         │  in a strawberry matcha color palette        │
+                         │  Next.js + Tailwind dashboard            │
+                         │  Metrics tiles, status-over-time chart,  │
+                         │  unapplied jobs list — pixelated UI      │
+                         │  in a strawberry matcha color palette    |
                          └──────────────────────────────────────────┘
 
          Everything in the collection pipeline is run daily,
          automatically, via GitHub Actions (.github/workflows/daily.yml)
 ```
 
-**Note:** the dashboard was originally built in Streamlit (`dashboard.py` + `agent.py`'s chat-based tool-use agent). It has since been migrated to a Next.js + Tailwind frontend with a FastAPI backend, due to Streamlit's CSS/layout limitations and slow (10-15s) full-script reruns on every interaction. `dashboard.py` is retained for reference only; `agent.py`'s tool-use logic is now the active backend for the `/chat` endpoint, called from `ChatWidget.tsx` on the Next.js side.
+**Note:** the dashboard was originally built in Streamlit (`dashboard.py` + `agent.py`'s chat-based tool-use agent). It has since been migrated to a Next.js + Tailwind frontend with a FastAPI backend, due to Streamlit's CSS/layout limitations and slow (10-15s) full-script reruns on every interaction. `dashboard.py` is retained for reference only; `agent.py`'s tool-use logic is now the active backend for the `/chat` endpoint, called from `ChatWidget.tsx` on the Next.js side. The data layer has also since migrated from Google Sheets to a Supabase (Postgres) database — see `db_tools.py`, which replaced `sheet_tools.py`.
 
 ## What it does
 
 1. **Collects** active new-grad SWE postings from curated GitHub repos (currently `speedyapply/2027-SWE-College-Jobs`; `SimplifyJobs/New-Grad-Positions` is supported but disabled until it adds 2027 postings)
 2. **Filters** by title keywords (software engineer, backend, frontend, forward deployed, etc.) and active/visible status
-3. **Deduplicates** against what's already been collected, so re-running never creates duplicate rows
+3. **Deduplicates** against what's already been collected (checked via `id` lookups in Supabase), so re-running never creates duplicate rows
 4. **Classifies** each new posting with the Claude API against personal preferences — location tiers, and hard-excludes for defense/government contractors and companies associated with ICE/surveillance work (both via an explicit blocklist for known companies and a prompt-based fallback for others)
-5. **Stores** everything in a Google Sheet — id, company, title, location, link, source, date posted, date scraped, status, relevance score, relevance reason — plus a `status_history` tab logging every status transition as an event (job_id, old_status, new_status, timestamp)
+5. **Stores** everything in a Supabase Postgres database — a `job_postings` table (id, company, title, location, link, source, date posted, date scraped, status, relevance score, relevance reason) plus a `status_history` table logging every status transition as an event (job_id, old_status, new_status, timestamp)
 6. **Reports** newly found postings to Slack once a day, sorted by relevance score
 7. **Runs automatically** every day via a GitHub Actions scheduled workflow — no manual steps required
 8. **Serves a dashboard** (Next.js frontend + FastAPI backend) showing status count tiles, a weekly status-history line chart (one line per status, color-matched to its tile), and the top 10 unapplied jobs with one-click "mark applied"
@@ -57,7 +58,7 @@ Built as a personal tool to reduce the manual overhead of a new-grad job search 
 ```
 job-search-agent/
 ├── collect_github.py          # Main collector: fetch, filter, dedup, classify, write to sheet
-├── sheet_tools.py              # Shared Google Sheets read/write logic (used by API + collector)
+├── db_tools.py                 # Shared Supabase (Postgres) read/write logic (used by API + collector)
 ├── slack_report.py             # Formats and sends today's new postings to Slack
 ├── reclassify.py               # One-off batch re-classification of existing rows
 ├── agent.py                    # Claude tool-use agent: search_jobs / mark_status tools (currently unused by the active UI — see note above)
@@ -115,8 +116,8 @@ Dealbreaker postings are currently still written to the sheet (visible, scored l
 | `ANTHROPIC_API_KEY` | Claude API access (classification + agent) |
 | `GH_TOKEN_PAT` | GitHub API token (higher rate limits; named to avoid GitHub Actions' reserved `GITHUB_*` prefix) |
 | `SLACK_WEBHOOK_URL` | Incoming webhook for the daily Slack digest |
-| `GOOGLE_SHEET_ID` | Target Google Sheet ID |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Full service account JSON (used as a GitHub Actions secret; written to a local file at runtime in CI) |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key (server-side only — used by the collector, Slack report, and FastAPI backend, never exposed to the frontend) |
 | `NEXT_PUBLIC_API_URL` | Base URL the frontend uses to reach the FastAPI backend |
 
 Locally, the Python-side variables live in `.env`. In GitHub Actions, they're stored as repository secrets and injected as environment variables in the workflow.
@@ -145,7 +146,7 @@ npm run dev                   # launch the Next.js dashboard
 
 ## The dashboard (Next.js + FastAPI)
 
-The FastAPI backend wraps the existing `sheet_tools.py` logic behind REST endpoints:
+The FastAPI backend wraps the existing `db_tools.py` logic behind REST endpoints:
 - `GET /jobs` — search/filter postings (`status`, `min_score`, `company`, `limit`), backed by `search_jobs()`
 - `PATCH /jobs/status` — update a posting's status (`job_id`, `new_status`), backed by `mark_status()`, validated against the same fixed status set used throughout the sheet
 - `GET /metrics` — status counts, backed by `get_status_counts()`
@@ -173,6 +174,7 @@ The UI uses a pixel-art aesthetic (Press Start 2P for headers/tile numbers/butto
 - [x] Pixelated strawberry-matcha visual redesign
 - [x] **Floating chat widget** — `agent.py` tool-use agent (search_jobs / mark_status) ported into `ChatWidget.tsx`, wired through `/chat`, styled to match the pixel-art theme
 - [x] **"Not interested" manual filter** — `PATCH /jobs/not-interested` + `mark_not_interested()`, exposed via a button on `JobCard.tsx` (used in both the unapplied list and chat results)
+- [x] **Migrate data layer from Google Sheets to Supabase (Postgres)** — schema created, data migrated via `migrate_to_supabase.py`, `sheet_tools.py` replaced by `db_tools.py` (using `supabase-py`), collector/Slack report/FastAPI/agent all repointed; verified working end-to-end
 - [ ] Additional sources (Greenhouse/Lever/Ashby direct pulls, Gmail parsing for LinkedIn/Handshake alerts)
 - [ ] Re-enable SimplifyJobs once it adds 2027 postings
 - [ ] Deployment — Next.js on Vercel, FastAPI on Render/Railway/Fly.io

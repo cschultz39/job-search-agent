@@ -18,6 +18,7 @@ def get_client():
     global _client
     if _client is None:
         _client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
+    return _client
 
 def search_jobs(status=None, min_score=None, company=None, limit=10):
     query = get_client().table("job_postings").select("*")
