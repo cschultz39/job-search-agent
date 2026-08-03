@@ -15,10 +15,11 @@ from db_tools import get_status_counts, search_jobs, mark_status, get_status_his
 from agent import ask_agent
 
 app = FastAPI(title="Job Search Agent API")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[FRONTEND_URL, "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
