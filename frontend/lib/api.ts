@@ -1,19 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export async function getMetrics() {
-    const res = await fetch(`${API_URL}/metrics`)
+    const res = await fetch(`${API_URL}/metrics`, { cache: "no-store" })
     if (!res.ok) throw new Error("Failed to fetch metrics");
     return res.json();
 }
 
 export async function getWeeklyHistory() {
-    const res = await fetch(`${API_URL}/history`)
+    const res = await fetch(`${API_URL}/history`, { cache: "no-store" })
     if (!res.ok) throw new Error("Failed to fetch history");
     return res.json();
 }
 
 export async function getUnappliedJobs() {
-    const res = await fetch(`${API_URL}/jobs?status=not+applied&limit=10`)
+    const res = await fetch(`${API_URL}/jobs?status=not+applied&limit=10`, { cache: "no-store" })
     if (!res.ok) throw new Error("Failed to fetch jobs");
     return res.json();
 }
