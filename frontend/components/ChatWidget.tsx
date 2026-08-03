@@ -115,9 +115,9 @@ export default function ChatWidget() {
             style={{
               fontSize: 11,
               color: "#fff",
-              background: "var(--color-heading)",
+              background: "var(--color-heading-light)",
               padding: "10px 14px",
-              borderBottom: "4px solid var(--color-heading-light)",
+              borderBottom: "4px solid var(--color-heading)",
             }}
           >
             job search assistant
@@ -199,9 +199,10 @@ export default function ChatWidget() {
               className="font-pixel"
               style={{
                 fontSize: 8,
-                background: "var(--color-heading)",
+                background: "var(--color-heading-light)",
                 color: "#fff",
-                border: "3px solid var(--color-heading-light)",
+                border: "3px solid var(--color-heading)",
+                boxShadow: "2px 2px 0 var(--color-heading)",
                 padding: "6px 10px",
                 cursor: loading ? "default" : "pointer",
               }}
@@ -218,10 +219,10 @@ export default function ChatWidget() {
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "var(--color-heading)",
+          background: "var(--color-heading-light)",
           color: "#fff",
-          border: "4px solid var(--color-heading-light)",
-          boxShadow: "4px 4px 0 var(--color-heading-light)",
+          border: "4px solid var(--color-heading)",
+          boxShadow: "3px 3px 0 var(--color-heading)",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",

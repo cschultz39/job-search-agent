@@ -68,6 +68,7 @@ job-search-agent/
 │   ├── simplifyjobs.py         # SimplifyJobs source (currently disabled — 2026 postings only)
 │   └── speedyapply.py          # speedyapply 2027-SWE-College-Jobs source
 ├── api/                         # FastAPI backend
+│   ├── __init__.py              # Makes api/ importable as a package — required for Railway's `uvicorn api.main:app` start command
 │   └── main.py                  # /jobs, /jobs/status, /metrics, /history, /chat endpoints
 ├── frontend/                    # Next.js + Tailwind dashboard
 │   ├── app/
@@ -85,7 +86,7 @@ job-search-agent/
 │       └── statusColors.ts       # Single source of truth for status -> color/label mapping
 ├── .github/workflows/
 │   └── daily.yml                 # Scheduled automation (runs collector + Slack report daily)
-├── requirements.txt
+├── requirements.txt              # Single consolidated dependency list (collector + Slack report + FastAPI backend all share one file/venv, since Railway builds from repo root)
 ├── .env                          # Local secrets (not committed)
 ├── service_account.json          # Google service account credentials (not committed)
 └── .gitignore
@@ -119,6 +120,7 @@ Dealbreaker postings are currently still written to the sheet (visible, scored l
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Supabase service role key (server-side only — used by the collector, Slack report, and FastAPI backend, never exposed to the frontend) |
 | `NEXT_PUBLIC_API_URL` | Base URL the frontend uses to reach the FastAPI backend |
+| `FRONTEND_URL` | Live Vercel domain, used for CORS in `api/main.py` |
 
 Locally, the Python-side variables live in `.env`. In GitHub Actions, they're stored as repository secrets and injected as environment variables in the workflow.
 
@@ -139,6 +141,20 @@ cd frontend
 npm install
 npm run dev                   # launch the Next.js dashboard
 ```
+
+## Deployment
+
+- **Frontend**: Next.js on Vercel. Root Directory set to `frontend`; `NEXT_PUBLIC_API_URL` points at the Railway backend URL.
+- **Backend**: FastAPI on Railway. Root Directory is the **repo root** (not `api/`) — `api/main.py` imports `db_tools.py` from the parent directory via `sys.path.append`, and the consolidated `requirements.txt` also lives at the repo root, so both need to be in the build context. Railway's start command is set explicitly (Railpack doesn't reliably auto-detect FastAPI or read `Procfile`):
+```
+uvicorn api.main:app --host 0.0.0.0 --port $PORT
+```
+This requires `api/__init__.py` to exist so `api.main` resolves as a package import.
+- **GitHub Actions** (`daily.yml`) runs independently of both — it talks directly to Supabase and Slack, unaffected by frontend/backend deploys.
+
+### Known gotchas from getting this working
+- Next.js App Router caches `fetch()` GET requests by default; the dashboard's data-fetching functions in `lib/api.ts` (`getMetrics`, `getWeeklyHistory`, `getUnappliedJobs`) use `{ cache: "no-store" }` so `router.refresh()` (called after any status-changing action, including agent-driven ones from chat) actually pulls fresh data instead of a stale cached response.
+- CORS origin matching is exact-string — a trailing slash mismatch between `FRONTEND_URL` and the browser's actual `Origin` header is enough to fail preflight on `/chat` and `/jobs/status`.
 
 ## Automation
 
@@ -175,6 +191,6 @@ The UI uses a pixel-art aesthetic (Press Start 2P for headers/tile numbers/butto
 - [x] **Floating chat widget** — `agent.py` tool-use agent (search_jobs / mark_status) ported into `ChatWidget.tsx`, wired through `/chat`, styled to match the pixel-art theme
 - [x] **"Not interested" manual filter** — `PATCH /jobs/not-interested` + `mark_not_interested()`, exposed via a button on `JobCard.tsx` (used in both the unapplied list and chat results)
 - [x] **Migrate data layer from Google Sheets to Supabase (Postgres)** — schema created, data migrated via `migrate_to_supabase.py`, `sheet_tools.py` replaced by `db_tools.py` (using `supabase-py`), collector/Slack report/FastAPI/agent all repointed; verified working end-to-end
+- [x] **Deployment** — Next.js on Vercel, FastAPI on Railway; both live and verified end-to-end (metrics/history/jobs load, mark-applied and mark-not-interested persist and reflect immediately, chat agent reachable and its status updates also reflect immediately)
 - [ ] Additional sources (Greenhouse/Lever/Ashby direct pulls, Gmail parsing for LinkedIn/Handshake alerts)
 - [ ] Re-enable SimplifyJobs once it adds 2027 postings
-- [ ] Deployment — Next.js on Vercel, FastAPI on Render/Railway/Fly.io

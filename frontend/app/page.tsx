@@ -22,7 +22,7 @@ export default async function Home() {
                   background: "var(--color-applied)",
                   color: "#fff",
                   padding: "10px 18px",
-                  border: "3px solid var(--color-applied-d)",
+                  border: "4px solid var(--color-applied-d)",
                   boxShadow: "4px 4px 0 var(--color-applied-d)",
                 }}
       >
@@ -30,13 +30,13 @@ export default async function Home() {
       </h1>
 
       <h2
-        className="font-pixel font-semibold text-med mb-4 inline-block"
+        className="font-pixel font-semibold text-med mb-3 inline-block"
         style={{
           background: "var(--color-not-applied)",
           color: "#fff",
           padding: "6px 12px",
-          border: "2px solid var(--color-not-applied-d)",
-          boxShadow: "2px 2px 0 var(--color-not-applied-d)",
+          border: "3px solid var(--color-not-applied-d)",
+          boxShadow: "3px 3px 0 var(--color-not-applied-d)",
         }}
       >
         status metrics
@@ -46,13 +46,13 @@ export default async function Home() {
       <div className="grid grid-cols-[1.4fr_1fr] gap-4 mt-6">
         <div>
         <h2
-          className="font-pixel font-semibold text-med mb-4 inline-block"
+          className="font-pixel font-semibold text-med mb-3 inline-block"
           style={{
             background: "var(--color-not-applied)",
             color: "#fff",
             padding: "6px 12px",
-            border: "2px solid var(--color-not-applied-d)",
-            boxShadow: "2px 2px 0 var(--color-not-applied-d)",
+            border: "3px solid var(--color-not-applied-d)",
+            boxShadow: "3px 3px 0 var(--color-not-applied-d)",
           }}
         >
           status history
@@ -64,13 +64,13 @@ export default async function Home() {
 
         <div>
         <h2
-          className="font-pixel font-semibold text-med mb-4 inline-block"
+          className="font-pixel font-semibold text-med mb-3 inline-block"
           style={{
             background: "var(--color-not-applied)",
             color: "#fff",
             padding: "6px 12px",
-            border: "2px solid var(--color-not-applied-d)",
-            boxShadow: "2px 2px 0 var(--color-not-applied-d)",
+            border: "3px solid var(--color-not-applied-d)",
+            boxShadow: "3px 3px 0 var(--color-not-applied-d)",
           }}
         >
           top unapplied
