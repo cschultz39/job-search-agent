@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 import json
 from anthropic import Anthropic
+from urllib.parse import urlsplit, urlunsplit
 
 # ------------ setup ------------------------
 load_dotenv()
 
+from scripts import newgrad2027
 from sources import speedyapply
 from db_tools import get_client
 
@@ -87,14 +89,24 @@ def classify_job(job):
         return fallback
 
 # ----------------- add to tracker -------------------------
-def get_existing_ids(client):
-    result = client.table("job_postings").select("id").execute()
-    return {row["id"] for row in result.data}
+def canonicalize_link(url):
+    if not url:
+        return url
+    parts = urlsplit(url)
+    path = parts.path.rstrip("/")
+    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, "", ""))
 
-def add_new_jobs(client, jobs, existing_ids):
+def get_existing_ids(client):
+    result = client.table("job_postings").select("id, link").execute()
+    ids = {row["id"] for row in result.data}
+    canonical_links = {canonicalize_link(row["link"]) for row in result.data if row.get("link")}
+    return ids, canonical_links
+
+def add_new_jobs(client, jobs, existing_ids, existing_canonical_links):
     new_count = 0
     for job in jobs:
-        if job["id"] in existing_ids:
+        canonical = canonicalize_link(job["link"])
+        if job["id"] in existing_ids or canonical in existing_canonical_links:
             continue
 
         if is_blocked_company(job["company"]):
@@ -128,21 +140,27 @@ def add_new_jobs(client, jobs, existing_ids):
         except Exception as e:
             print(f"  Warning: job added but history logging failed: {e}")
 
+        existing_ids.add(job["id"])
+        existing_canonical_links.add(canonical)
         new_count += 1
     return new_count
 
 if __name__ == "__main__":
     print("Fetching from sources...")
-    jobs = speedyapply.get_jobs()
-    print(f"{len(jobs)} postings match filters")
+    speedyapply_jobs = speedyapply.get_jobs()
+    print(f"  speedyapply: {len(speedyapply_jobs)} postings match filters")
+    newgrad2027_jobs = newgrad2027.get_jobs()
+    print(f"  newgrad2027: {len(newgrad2027_jobs)} postings match filters")
+    jobs = speedyapply_jobs + newgrad2027_jobs
+    print(f"{len(jobs)} total postings match filters")
 
     print("Connecting to Supabase...")
     client = get_client()
 
     print("Checking which ones are already saved...")
-    existing_ids = get_existing_ids(client)
+    existing_ids, existing_canonical_links = get_existing_ids(client)
     print(f"{len(existing_ids)} already in the sheet")
 
     print("Adding new postings...")
-    added = add_new_jobs(client, jobs, existing_ids)
+    added = add_new_jobs(client, jobs, existing_ids, existing_canonical_links)
     print(f"\nAdded {added} new posting(s) to the sheet.")
