@@ -67,6 +67,7 @@ job-search-agent/
 │   ├── __init__.py
 │   ├── simplifyjobs.py         # SimplifyJobs source (currently disabled — 2026 postings only)
 │   └── speedyapply.py          # speedyapply 2027-SWE-College-Jobs source
+│   └── newgrad2027.py          # vanshb03/New-Grad-2027 source
 ├── api/                         # FastAPI backend
 │   ├── __init__.py              # Makes api/ importable as a package — required for Railway's `uvicorn api.main:app` start command
 │   └── main.py                  # /jobs, /jobs/status, /metrics, /history, /chat endpoints
@@ -97,6 +98,7 @@ job-search-agent/
 | Source | Status | Notes |
 |---|---|---|
 | `speedyapply/2027-SWE-College-Jobs` | Active | Markdown tables (HTML-formatted cells), parsed via `sources/speedyapply.py` |
+| `vanshb03/New-Grad-2027` | Active | Markdown table (HTML-formatted cells, `**bold**` company names, `<br>`-separated multi-location cells), parsed via `sources/newgrad2027.py`. Filters out 🔒 (closed) postings and anything dated before 2026-07-24 (pre-2027-cycle postings) |
 | `SimplifyJobs/New-Grad-Positions` | Disabled | Clean JSON backing (`listings.json`), but currently only has 2026 grad postings — re-enable once 2027 roles are added |
 
 ## Classification logic
