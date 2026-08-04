@@ -9,7 +9,7 @@ from urllib.parse import urlsplit, urlunsplit
 # ------------ setup ------------------------
 load_dotenv()
 
-from scripts import newgrad2027
+from sources import newgrad2027
 from sources import speedyapply
 from db_tools import get_client
 

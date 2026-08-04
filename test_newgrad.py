@@ -1,4 +1,4 @@
-from scripts.newgrad2027 import fetch_markdown, RAW_URL
+from sources.newgrad2027 import fetch_markdown, RAW_URL
 
 text = fetch_markdown()
 print(f"Fetched {len(text)} characters from {RAW_URL}")
